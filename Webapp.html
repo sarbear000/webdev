@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8" />
+ <title>Riddle Game with Music & SFX</title>
+ <style>
+   body {
+     font-family: 'Segoe UI', sans-serif;
+     background: bisque;
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     justify-content: center;
+     min-height: 100vh;
+     margin: 0;
+   }
+
+
+   .container {
+     background: white;
+     padding: 2rem;
+     border-radius: 12px;
+     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+     text-align: center;
+     max-width: 600px;
+     width: 90%;
+   }
+
+
+   input[type="text"], select {
+     padding: 10px;
+     margin-top: 10px;
+     width: 100%;
+     box-sizing: border-box;
+     border: 1px solid #ccc;
+     border-radius: 6px;
+     font-size: 1rem;
+   }
+
+
+   button {
+     margin: 10px 5px 0;
+     padding: 10px 20px;
+     background-color: #007acc;
+     color: white;
+     border: none;
+     border-radius: 6px;
+     cursor: pointer;
+     font-size: 1rem;
+   }
+
+
+   button:hover {
+     background-color: #005f99;
+   }
+
+
+   .result {
+     margin-top: 1rem;
+     font-weight: bold;
+     font-size: 1.2rem;
+   }
+
+
+   .correct {
+     color: green;
+     animation: bounce 0.4s ease;
+   }
+
+
+   .incorrect {
+     color: red;
+     animation: shake 0.3s ease;
+   }
+
+
+   .fade-in {
+     animation: fadeIn 0.8s ease;
+   }
+
+
+   .score {
+     font-size: 1rem;
+     margin-bottom: 1rem;
+   }
+
+
+   @keyframes bounce {
+     0% { transform: scale(1); }
+     50% { transform: scale(1.2); }
+     100% { transform: scale(1); }
+   }
+
+
+   @keyframes shake {
+     0%, 100% { transform: translateX(0); }
+     25% { transform: translateX(-5px); }
+     75% { transform: translateX(5px); }
+   }
+
+
+   @keyframes fadeIn {
+     from { opacity: 0; }
+     to { opacity: 1; }
+   }
+
+
+   .mute-toggle {
+     margin-top: 1rem;
+     cursor: pointer;
+     font-size: 0.9rem;
+     color: #333;
+     text-decoration: underline;
+   }
+ </style>
+</head>
+<body>
+ <div class="container">
+   <span style="font-weight: bold;">&#128065 Riddle Me This &#128065</span>
+   <br>
+   <span style="font-size: 30px;">&#128068</span>
+   <div class="score" id="score">Score: 0</div>
+   <p id="riddle" class="fade-in"></p>
+   <input type="text" id="answer" placeholder="Your answer..." />
+   <div>
+     <button onclick="checkAnswer()">Submit</button>
+     <button onclick="showHint()">Hint</button>
+     <button onclick="nextRiddle()">Next Riddle</button>
+   </div>
+   <div class="result" id="result"></div>
+   <div class="mute-toggle" onclick="toggleMute()">🔊 Mute / Unmute</div>
+ </div>
+
+
+ <!-- Audio Elements -->
+ <audio id="bg-music" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+ <audio id="correct-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+ <audio id="wrong-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+ <audio id="hint-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-game-ball-tap-2073.mp3"></audio>
+
+
+ <script>
+   const riddles = [
+     { question: "What has hands but can’t clap?", answer: "clock", hint: "It helps you tell time." },
+     { question: "What gets wetter the more it dries?", answer: "towel", hint: "You use it after a shower." },
+     { question: "The more of me you take, the more you leave behind. What am I?", answer: "footsteps", hint: "You leave these when walking." },
+     { question: "What has to be broken before you can use it?", answer: "egg", hint: "You crack it in the kitchen." },
+     { question: "What has a head and a tail but no body?", answer: "coin", hint: "Used as money." }
+   ];
+
+
+   let currentRiddle = {};
+   let remainingRiddles = [...riddles];
+   let score = 0;
+   let hintUsed = false;
+
+
+   const bgMusic = document.getElementById("bg-music");
+   const correctSound = document.getElementById("correct-sound");
+   const wrongSound = document.getElementById("wrong-sound");
+   const hintSound = document.getElementById("hint-sound");
+
+
+   bgMusic.volume = 0.3;
+   bgMusic.play();
+
+
+   function toggleMute() {
+     const isMuted = bgMusic.muted;
+     bgMusic.muted = !isMuted;
+     correctSound.muted = !isMuted;
+     wrongSound.muted = !isMuted;
+     hintSound.muted = !isMuted;
+   }
+
+
+   function getRandomRiddle() {
+     if (remainingRiddles.length === 0) {
+       alert("You've finished all riddles! Starting over.");
+       remainingRiddles = [...riddles];
+     }
+     const index = Math.floor(Math.random() * remainingRiddles.length);
+     return remainingRiddles.splice(index, 1)[0];
+   }
+
+
+   function loadRiddle() {
+     currentRiddle = getRandomRiddle();
+     document.getElementById("riddle").textContent = currentRiddle.question;
+     document.getElementById("riddle").classList.remove("fade-in");
+     void document.getElementById("riddle").offsetWidth; // reset animation
+     document.getElementById("riddle").classList.add("fade-in");
+     document.getElementById("answer").value = "";
+     document.getElementById("result").textContent = "";
+     document.getElementById("result").className = "result";
+     hintUsed = false;
+   }
+
+
+   function checkAnswer() {
+     const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+     const result = document.getElementById("result");
+
+
+     if (userAnswer === currentRiddle.answer.toLowerCase()) {
+       result.textContent = "✅ Correct!";
+       result.className = "result correct";
+       correctSound.play();
+       score += hintUsed ? 5 : 10;
+       document.getElementById("score").textContent = "Score: " + score;
+     } else {
+       result.textContent = "❌ Try again!";
+       result.className = "result incorrect";
+       wrongSound.play();
+     }
+   }
+
+
+   function showHint() {
+     if (!hintUsed) {
+       alert("💡 Hint: " + currentRiddle.hint);
+       hintSound.play();
+       hintUsed = true;
+     }
+   }
+
+
+   function nextRiddle() {
+     loadRiddle();
+   }
+
+
+   loadRiddle();
+ </script>
+</body>
+</html>
